@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panels Verification</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0e1a;
+            color: #e8edf8;
+            padding: 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 { color: #00f5c8; margin-bottom: 30px; }
+        h2 { color: #0aafff; margin-top: 30px; }
+        .section {
+            background: #141b2d;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .check-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(255,255,255,0.03);
+            border-radius: 6px;
+        }
+        .status {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+        .status.pass { background: #00d4a8; color: white; }
+        .status.fail { background: #ff4b6e; color: white; }
+        .status.pending { background: #ffb547; color: white; }
+        button {
+            background: #0aafff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 10px 5px;
+        }
+        button:hover { opacity: 0.9; }
+        .error { color: #ff4b6e; font-size: 12px; margin-left: 30px; }
+        .success { color: #00d4a8; }
+        pre {
+            background: #0a0e1a;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🛡️ Admin & Super Admin Panels Verification</h1>
+    
+    <div class="section">
+        <h2>Quick Links</h2>
+        <button onclick="window.open('frontend/login.html', '_blank')">Open Login Page</button>
+        <button onclick="window.open('frontend/admin.html', '_blank')">Open Admin Panel</button>
+        <button onclick="window.open('frontend/superadmin.html', '_blank')">Open Super Admin Panel</button>
+        <button onclick="runVerification()">Run Verification</button>
+    </div>
+
+    <div class="section">
+        <h2>File Structure Verification</h2>
+        <div id="fileChecks"></div>
+    </div>
+
+    <div class="section">
+        <h2>JavaScript Files Verification</h2>
+        <div id="jsChecks"></div>
+    </div>
+
+    <div class="section">
+        <h2>API Endpoints Verification</h2>
+        <div id="apiChecks"></div>
+    </div>
+
+    <div class="section">
+        <h2>Backend Status</h2>
+        <div id="backendStatus"></div>
+    </div>
+
+    <div class="section">
+        <h2>Test Credentials</h2>
+        <pre>
+Super Admin:
+  Email: superadmin@datavault.com
+  Password: SuperAdmin2024!
+
+Admin:
+  Email: admin@datavault.com
+  Password: Admin2024!
+
+Regular User:
+  Email: user@example.com
+  Password: password
+        </pre>
+    </div>
+
+    <script src="frontend/config.js"></script>
+    <script>
+        const checks = {
+            files: [
+                { name: 'frontend/admin.html', type: 'HTML' },
+                { name: 'frontend/superadmin.html', type: 'HTML' },
+                { name: 'frontend/assets/js/admin.js', type: 'JavaScript' },
+                { name: 'frontend/assets/js/superadmin.js', type: 'JavaScript' },
+                { name: 'frontend/assets/js/api.js', type: 'JavaScript' },
+                { name: 'frontend/config.js', type: 'JavaScript' }
+            ],
+            jsObjects: [
+                'AuthAPI',
+                'DocumentsAPI',
+                'SharesAPI',
+                'SecurityAPI',
+                'AdminAPI',
+                'SuperAdminAPI',
+                'Utils',
+                'TokenManager'
+            ],
+            apiEndpoints: [
+                { method: 'GET', path: '/api/admin/users', auth: true },
+                { method: 'GET', path: '/api/admin/analytics', auth: true },
+                { method: 'GET', path: '/api/superadmin/platform-stats', auth: true },
+                { method: 'GET', path: '/api/superadmin/admins', auth: true },
+                { method: 'POST', path: '/api/superadmin/admins', auth: true },
+                { method: 'GET', path: '/api/superadmin/ai-config', auth: true },
+                { method: 'GET', path: '/api/superadmin/system-health', auth: true }
+            ]
+        };
+
+        async function checkFile(file) {
+            try {
+                const response = await fetch(file.name);
+                return response.ok;
+            } catch (error) {
+                return false;
+            }
+        }
+
+        async function checkBackend() {
+            const baseUrl = (typeof CONFIG !== 'undefined' && CONFIG.API_BASE_URL) 
+                ? CONFIG.API_BASE_URL 
+                : 'http://localhost:8001';
+            
+            try {
+                const response = await fetch(`${baseUrl}/api/docs`);
+                return { status: response.ok, url: baseUrl };
+            } catch (error) {
+                return { status: false, url: baseUrl, error: error.message };
+            }
+        }
+
+        function createCheckItem(name, status, error = null) {
+            const statusIcon = status === 'pass' ? '✓' : status === 'fail' ? '✗' : '⋯';
+            const statusClass = status;
+            
+            return `
+                <div class="check-item">
+                    <div class="status ${statusClass}">${statusIcon}</div>
+                    <span>${name}</span>
+                    ${error ? `<div class="error">${error}</div>` : ''}
+                </div>
+            `;
+        }
+
+        async function runVerification() {
+            // File checks
+            const fileChecksDiv = document.getElementById('fileChecks');
+            fileChecksDiv.innerHTML = '<p>Checking files...</p>';
+            
+            let fileResults = '';
+            for (const file of checks.files) {
+                const exists = await checkFile(file);
+                fileResults += createCheckItem(
+                    `${file.name} (${file.type})`,
+                    exists ? 'pass' : 'fail',
+                    exists ? null : 'File not found or not accessible'
+                );
+            }
+            fileChecksDiv.innerHTML = fileResults;
+
+            // JavaScript object checks
+            const jsChecksDiv = document.getElementById('jsChecks');
+            let jsResults = '';
+            
+            // Load API.js first
+            try {
+                await loadScript('frontend/assets/js/api.js');
+                
+                for (const obj of checks.jsObjects) {
+                    const exists = typeof window[obj] !== 'undefined';
+                    jsResults += createCheckItem(
+                        obj,
+                        exists ? 'pass' : 'fail',
+                        exists ? null : 'Object not found in global scope'
+                    );
+                }
+            } catch (error) {
+                jsResults = createCheckItem('API.js', 'fail', error.message);
+            }
+            
+            jsChecksDiv.innerHTML = jsResults;
+
+            // Backend check
+            const backendStatusDiv = document.getElementById('backendStatus');
+            backendStatusDiv.innerHTML = '<p>Checking backend...</p>';
+            
+            const backendResult = await checkBackend();
+            backendStatusDiv.innerHTML = `
+                <div class="check-item">
+                    <div class="status ${backendResult.status ? 'pass' : 'fail'}">
+                        ${backendResult.status ? '✓' : '✗'}
+                    </div>
+                    <span>Backend Server (${backendResult.url})</span>
+                </div>
+                ${backendResult.error ? `<div class="error">Error: ${backendResult.error}</div>` : ''}
+                ${backendResult.status ? '<p class="success">✓ Backend is running and accessible</p>' : 
+                  '<p class="error">✗ Backend is not running. Start it with: python backend/app_postgres.py</p>'}
+            `;
+
+            // API endpoints check
+            const apiChecksDiv = document.getElementById('apiChecks');
+            if (backendResult.status) {
+                apiChecksDiv.innerHTML = '<p class="success">✓ Backend is running. API endpoints should be available.</p>';
+            } else {
+                apiChecksDiv.innerHTML = '<p class="error">✗ Cannot check API endpoints - backend is not running.</p>';
+            }
+        }
+
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        // Auto-run verification on load
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(runVerification, 500);
+        });
+    </script>
+</body>
+</html>

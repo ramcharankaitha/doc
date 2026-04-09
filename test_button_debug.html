@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Button Debug Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #1a1a2e;
+            color: #fff;
+        }
+        .test-section {
+            background: #16213e;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+        button {
+            background: #00f5c8;
+            color: #000;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #00d4aa;
+        }
+        .result {
+            background: #000;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            color: #00f5c8;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .error {
+            color: #ff4b6e;
+        }
+        .success {
+            color: #00f5c8;
+        }
+        .doc-card {
+            background: #0f1419;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+        .dc-btn {
+            background: #7B5CFF;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 0 5px;
+            font-size: 12px;
+        }
+        .dc-btn:hover {
+            background: #9575FF;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Button Debug Test</h1>
+    
+    <div class="test-section">
+        <h2>Step 1: Test API Connection</h2>
+        <button onclick="testAPIConnection()">Test Backend Connection</button>
+        <div id="apiResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Step 2: Test Login</h2>
+        <button onclick="testLogin()">Login as user@example.com</button>
+        <div id="loginResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Step 3: Test Document Loading</h2>
+        <button onclick="testDocuments()">Load Documents</button>
+        <div id="documentsResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Step 4: Test Button Functions</h2>
+        <div id="buttonTest">
+            <p>First load documents above, then test buttons here:</p>
+            <button onclick="testViewButton()">Test View Function</button>
+            <button onclick="testShareButton()">Test Share Function</button>
+            <button onclick="testDeleteButton()">Test Delete Function</button>
+        </div>
+        <div id="buttonResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Step 5: Test Real Document Card</h2>
+        <div id="realCardTest">
+            <!-- This will be populated with a real document card -->
+        </div>
+    </div>
+
+    <script src="frontend/config.js"></script>
+    <script src="frontend/assets/js/api.js"></script>
+    <script>
+        let testDocumentId = null;
+        
+        // CSS Variables for modals
+        document.documentElement.style.setProperty('--navy2', '#16213e');
+        document.documentElement.style.setProperty('--navy3', '#0f1419');
+        document.documentElement.style.setProperty('--navy', '#1a1a2e');
+        document.documentElement.style.setProperty('--cyan', '#00f5c8');
+        document.documentElement.style.setProperty('--text', '#ffffff');
+        document.documentElement.style.setProperty('--muted', '#888888');
+        document.documentElement.style.setProperty('--border', '#333333');
+        document.documentElement.style.setProperty('--purple', '#7B5CFF');
+        document.documentElement.style.setProperty('--red', '#ff4b6e');
+
+        async function testAPIConnection() {
+            const resultDiv = document.getElementById('apiResult');
+            try {
+                resultDiv.innerHTML = '<div class="result">Testing API connection...</div>';
+                
+                const response = await fetch('http://localhost:8001/api/auth/me', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                resultDiv.innerHTML = `<div class="result ${response.ok ? 'success' : 'error'}">
+API Connection Test:
+Status: ${response.status} ${response.statusText}
+URL: http://localhost:8001/api/auth/me
+Response: ${response.ok ? '✅ Backend is running' : '❌ Backend not responding'}
+</div>`;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result error">❌ Connection Error: ${error.message}
+Make sure backend is running on port 8001</div>`;
+            }
+        }
+
+        async function testLogin() {
+            const resultDiv = document.getElementById('loginResult');
+            try {
+                resultDiv.innerHTML = '<div class="result">Logging in...</div>';
+                
+                const response = await AuthAPI.login('user@example.com', 'password');
+                TokenManager.setToken(response.access_token);
+                
+                resultDiv.innerHTML = `<div class="result success">✅ Login successful!
+Token: ${response.access_token.substring(0, 30)}...
+User: ${response.user.full_name}
+Role: ${response.user.role}</div>`;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result error">❌ Login Error: ${error.message}</div>`;
+            }
+        }
+
+        async function testDocuments() {
+            const resultDiv = document.getElementById('documentsResult');
+            try {
+                resultDiv.innerHTML = '<div class="result">Loading documents...</div>';
+                
+                const response = await DocumentsAPI.getAll();
+                console.log('Documents response:', response);
+                
+                let documents = [];
+                if (Array.isArray(response)) {
+                    documents = response;
+                } else if (response && response.documents) {
+                    documents = response.documents;
+                }
+                
+                if (documents.length > 0) {
+                    testDocumentId = documents[0].id;
+                    
+                    resultDiv.innerHTML = `<div class="result success">✅ Documents loaded!
+Count: ${documents.length}
+First document ID: ${testDocumentId}
+Sample document: ${JSON.stringify(documents[0], null, 2)}</div>`;
+                    
+                    // Create a real document card for testing
+                    createRealDocumentCard(documents[0]);
+                } else {
+                    resultDiv.innerHTML = `<div class="result">No documents found. Upload one first!</div>`;
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result error">❌ Documents Error: ${error.message}</div>`;
+            }
+        }
+
+        async function testViewButton() {
+            const resultDiv = document.getElementById('buttonResult');
+            if (!testDocumentId) {
+                resultDiv.innerHTML = '<div class="result error">❌ Load documents first</div>';
+                return;
+            }
+            
+            try {
+                resultDiv.innerHTML = '<div class="result">Testing viewDocument() function...</div>';
+                await viewDocument(testDocumentId);
+                resultDiv.innerHTML = '<div class="result success">✅ View function called! Check if modal appeared.</div>';
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result error">❌ View Error: ${error.message}</div>`;
+            }
+        }
+
+        async function testShareButton() {
+            const resultDiv = document.getElementById('buttonResult');
+            if (!testDocumentId) {
+                resultDiv.innerHTML = '<div class="result error">❌ Load documents first</div>';
+                return;
+            }
+            
+            try {
+                resultDiv.innerHTML = '<div class="result">Testing shareDocument() function...</div>';
+                await shareDocument(testDocumentId);
+                resultDiv.innerHTML = '<div class="result success">✅ Share function called! Check if modal appeared.</div>';
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result error">❌ Share Error: ${error.message}</div>`;
+            }
+        }
+
+        async function testDeleteButton() {
+            const resultDiv = document.getElementById('buttonResult');
+            if (!testDocumentId) {
+                resultDiv.innerHTML = '<div class="result error">❌ Load documents first</div>';
+                return;
+            }
+            
+            try {
+                resultDiv.innerHTML = '<div class="result">Testing deleteDocument() function...</div>';
+                // Note: This will show confirmation dialog
+                await deleteDocument(testDocumentId);
+                resultDiv.innerHTML = '<div class="result success">✅ Delete function called! Check if confirmation appeared.</div>';
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result error">❌ Delete Error: ${error.message}</div>`;
+            }
+        }
+
+        function createRealDocumentCard(doc) {
+            const container = document.getElementById('realCardTest');
+            container.innerHTML = `
+                <h3>Real Document Card (click buttons to test):</h3>
+                <div class="doc-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <div style="font-size: 24px;">📄</div>
+                        <div style="font-size: 18px; cursor: pointer;" onclick="showDocumentMenu('${doc.id}')">⋯</div>
+                    </div>
+                    <div style="font-weight: bold; margin-bottom: 5px;">${doc.filename}</div>
+                    <div style="color: #888; font-size: 12px; margin-bottom: 15px;">Uploaded ${new Date(doc.uploaded_at).toLocaleDateString()}</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 11px; color: #888;">${doc.size}</span>
+                        <div>
+                            <button class="dc-btn" onclick="shareDocument('${doc.id}')">Share</button>
+                            <button class="dc-btn" onclick="viewDocument('${doc.id}')">View</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Include the actual functions from dashboard.js
+        async function viewDocument(id) {
+            try {
+                Utils.showNotification('Loading document...', 'info');
+                
+                const doc = await DocumentsAPI.getById(id);
+                
+                // Create modal to view document
+                const modal = document.createElement('div');
+                modal.className = 'modal-overlay';
+                modal.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0,0,0,0.8);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 10000;
+                `;
+                
+                modal.innerHTML = `
+                    <div style="background: var(--navy2); padding: 30px; border-radius: 12px; max-width: 800px; width: 90%; max-height: 90vh; overflow-y: auto;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h2 style="margin: 0; color: var(--cyan);">📄 Document Details</h2>
+                            <button onclick="this.closest('.modal-overlay').remove()" style="background: transparent; border: none; color: var(--text); font-size: 24px; cursor: pointer;">&times;</button>
+                        </div>
+                        
+                        <div style="background: var(--navy3); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                            <div style="display: grid; grid-template-columns: 150px 1fr; gap: 15px; color: var(--text);">
+                                <div style="color: var(--muted);">Filename:</div>
+                                <div style="font-weight: bold;">${doc.filename || doc.original_filename || 'Unknown'}</div>
+                                
+                                <div style="color: var(--muted);">Category:</div>
+                                <div>${doc.category || doc.document_type || 'Document'}</div>
+                                
+                                <div style="color: var(--muted);">Size:</div>
+                                <div>${doc.size || Utils.formatFileSize(doc.file_size || 0)}</div>
+                                
+                                <div style="color: var(--muted);">Uploaded:</div>
+                                <div>${Utils.formatDate(doc.uploaded_at || doc.created_at)}</div>
+                                
+                                <div style="color: var(--muted);">Privacy Score:</div>
+                                <div style="color: var(--cyan); font-weight: bold;">${doc.privacy_score || 90}/100</div>
+                                
+                                <div style="color: var(--muted);">Status:</div>
+                                <div>${doc.is_verified ? '<span style="color: var(--cyan);">✓ Verified</span>' : '<span style="color: var(--muted);">Pending</span>'}</div>
+                                
+                                <div style="color: var(--muted);">Blockchain:</div>
+                                <div>${doc.blockchain_hash ? '<span style="color: var(--cyan);">⛓ Secured</span>' : '<span style="color: var(--muted);">Not secured</span>'}</div>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                            <button onclick="shareDocument('${id}')" style="background: var(--cyan); color: var(--navy); padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
+                                🔗 Share
+                            </button>
+                            <button onclick="downloadDocument('${id}')" style="background: var(--purple); color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
+                                ⬇️ Download
+                            </button>
+                            <button onclick="this.closest('.modal-overlay').remove()" style="background: var(--navy3); color: var(--text); padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer;">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+            } catch (error) {
+                console.error('Failed to view document:', error);
+                Utils.showNotification('Failed to load document: ' + error.message, 'error');
+            }
+        }
+
+        async function shareDocument(documentId) {
+            try {
+                // Close any existing modals
+                const existingModal = document.querySelector('.share-modal-overlay');
+                if (existingModal) existingModal.remove();
+                
+                // Create share modal
+                const modal = document.createElement('div');
+                modal.className = 'share-modal-overlay';
+                modal.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0,0,0,0.8);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 10000;
+                `;
+                
+                modal.innerHTML = `
+                    <div style="background: var(--navy2); padding: 30px; border-radius: 12px; max-width: 600px; width: 90%;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h2 style="margin: 0; color: var(--cyan);">🔗 Share Document</h2>
+                            <button onclick="this.closest('.share-modal-overlay').remove()" style="background: transparent; border: none; color: var(--text); font-size: 24px; cursor: pointer;">&times;</button>
+                        </div>
+                        
+                        <div style="background: var(--navy3); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; color: var(--muted); margin-bottom: 5px;">Access Limit</label>
+                                <input type="number" id="accessLimit" value="10" min="1" max="100" style="width: 100%; padding: 10px; background: var(--navy); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+                            </div>
+                            
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; color: var(--muted); margin-bottom: 5px;">Expires In</label>
+                                <select id="expiresIn" style="width: 100%; padding: 10px; background: var(--navy); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+                                    <option value="24">24 hours</option>
+                                    <option value="72">3 days</option>
+                                    <option value="168">1 week</option>
+                                    <option value="720">30 days</option>
+                                </select>
+                            </div>
+                            
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                    <input type="checkbox" id="requireOTP" checked style="width: 18px; height: 18px;">
+                                    <span style="color: var(--text);">Require OTP for access</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                            <button onclick="generateShareLinkForDoc('${documentId}')" style="background: var(--cyan); color: var(--navy); padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
+                                Generate Link
+                            </button>
+                            <button onclick="this.closest('.share-modal-overlay').remove()" style="background: var(--navy3); color: var(--text); padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer;">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+            } catch (error) {
+                console.error('Failed to open share modal:', error);
+                Utils.showNotification('Failed to open share dialog: ' + error.message, 'error');
+            }
+        }
+
+        async function generateShareLinkForDoc(documentId) {
+            try {
+                Utils.showNotification('Generating share link...', 'info');
+                
+                const settings = {
+                    document_id: documentId,
+                    access_limit: parseInt(document.getElementById('accessLimit').value),
+                    expires_in_hours: parseInt(document.getElementById('expiresIn').value),
+                    require_otp: document.getElementById('requireOTP').checked
+                };
+                
+                const result = await SharesAPI.create(documentId, settings);
+                Utils.showNotification('Share link created successfully!', 'success');
+                
+            } catch (error) {
+                console.error('Failed to create share:', error);
+                Utils.showNotification('Failed to create share: ' + error.message, 'error');
+            }
+        }
+
+        async function deleteDocument(id) {
+            const confirmed = confirm('Are you sure you want to delete this document? This action cannot be undone.');
+            
+            if (!confirmed) return;
+            
+            try {
+                Utils.showNotification('Deleting document...', 'info');
+                
+                await DocumentsAPI.delete(id);
+                
+                Utils.showNotification('Document deleted successfully!', 'success');
+                
+            } catch (error) {
+                console.error('Delete failed:', error);
+                Utils.showNotification('Failed to delete document: ' + error.message, 'error');
+            }
+        }
+
+        function showDocumentMenu(id) {
+            alert(`Document menu for ID: ${id}\nThis would show context menu with View, Share, Delete options.`);
+        }
+
+        async function downloadDocument(id) {
+            Utils.showNotification('Download feature coming soon!', 'info');
+        }
+    </script>
+</body>
+</html>

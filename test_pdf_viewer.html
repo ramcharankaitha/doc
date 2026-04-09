@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Viewer Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #1a1a2e;
+            color: #fff;
+        }
+        .test-section {
+            background: #16213e;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+        button {
+            background: #00f5c8;
+            color: #000;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #00d4aa;
+        }
+        .result {
+            background: #000;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            color: #00f5c8;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .error {
+            color: #ff4b6e;
+        }
+        .success {
+            color: #00f5c8;
+        }
+        #pdfViewer {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #333;
+            border-radius: 8px;
+            background: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 PDF Viewer Debug Test</h1>
+    
+    <div class="test-section">
+        <h2>Step 1: Login</h2>
+        <button onclick="testLogin()">Login as user@example.com</button>
+        <div id="loginResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Step 2: Get Documents</h2>
+        <button onclick="testGetDocuments()">Load Documents</button>
+        <div id="documentsResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Step 3: Get Document Details</h2>
+        <input type="text" id="docId" placeholder="Enter document ID" style="padding: 8px; background: #1a1a2e; color: #fff; border: 1px solid #333; border-radius: 4px; width: 300px;">
+        <button onclick="testGetDocument()">Get Document Info</button>
+        <div id="documentResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Step 4: Fetch PDF File</h2>
+        <button onclick="testFetchFile()">Fetch PDF File</button>
+        <div id="fileResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Step 5: Display PDF</h2>
+        <button onclick="testDisplayPDF()">Display PDF in Viewer</button>
+        <div id="viewerResult"></div>
+        <div style="margin-top: 20px;">
+            <iframe id="pdfViewer" style="display: none;"></iframe>
+        </div>
+    </div>
+
+    <script src="frontend/config.js"></script>
+    <script>
+        let currentToken = null;
+        let currentDocId = null;
+        let pdfBlob = null;
+
+        async function testLogin() {
+            const resultDiv = document.getElementById('loginResult');
+            try {
+                resultDiv.innerHTML = '<div class="result">Logging in...</div>';
+                
+                const response = await fetch('http://localhost:8001/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'user@example.com',
+                        password: 'password'
+                    })
+                });
+                
+                console.log('Login response status:', response.status);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Login failed: ${response.status} - ${errorText}`);
+                }
+                
+                const data = await response.json();
+                currentToken = data.access_token;
+                
+                resultDiv.innerHTML = `<div class="result success">✅ Login successful!
+Token: ${currentToken.substring(0, 50)}...
+User: ${data.user.full_name}
+Email: ${data.user.email}</div>`;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result error">❌ Login Error: ${error.message}</div>`;
+                console.error('Login error:', error);
+            }
+        }
+
+        async function testGetDocuments() {
+            const resultDiv = document.getElementById('documentsResult');
+            
+            if (!currentToken) {
+                resultDiv.innerHTML = '<div class="result error">❌ Please login first</div>';
+                return;
+            }
+
+            try {
+                resultDiv.innerHTML = '<div class="result">Loading documents...</div>';
+                
+                const response = await fetch('http://localhost:8001/api/documents', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                console.log('Documents response status:', response.status);
+                console.log('Documents response headers:', [...response.headers.entries()]);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Failed to get documents: ${response.status} - ${errorText}`);
+                }
+                
+                const data = await response.json();
+                console.log('Documents data:', data);
+                
+                const documents = data.documents || [];
+                
+                if (documents.length > 0) {
+                    currentDocId = documents[0].id;
+                    document.getElementById('docId').value = currentDocId;
+                    
+                    resultDiv.innerHTML = `<div class="result success">✅ Documents loaded!
+Count: ${documents.length}
+First document ID: ${currentDocId}
+First document: ${documents[0].filename}
+
+All documents:
+${JSON.stringify(documents, null, 2)}</div>`;
+                } else {
+                    resultDiv.innerHTML = `<div class="result">No documents found. Upload one first!</div>`;
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result error">❌ Documents Error: ${error.message}</div>`;
+                console.error('Documents error:', error);
+            }
+        }
+
+        async function testGetDocument() {
+            const resultDiv = document.getElementById('documentResult');
+            const docId = document.getElementById('docId').value;
+            
+            if (!currentToken) {
+                resultDiv.innerHTML = '<div class="result error">❌ Please login first</div>';
+                return;
+            }
+            
+            if (!docId) {
+                resultDiv.innerHTML = '<div class="result error">❌ Please enter a document ID</div>';
+                return;
+            }
+
+            try {
+                resultDiv.innerHTML = '<div class="result">Loading document details...</div>';
+                
+                const response = await fetch(`http://localhost:8001/api/documents/${docId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                console.log('Document response status:', response.status);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Failed to get document: ${response.status} - ${errorText}`);
+                }
+                
+                const doc = await response.json();
+                console.log('Document data:', doc);
+                
+                currentDocId = docId;
+                
+                resultDiv.innerHTML = `<div class="result success">✅ Document loaded!
+ID: ${doc.id}
+Filename: ${doc.filename}
+Content Type: ${doc.content_type}
+Size: ${doc.size}
+File Path: ${doc.file_path}
+
+Full document:
+${JSON.stringify(doc, null, 2)}</div>`;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result error">❌ Document Error: ${error.message}</div>`;
+                console.error('Document error:', error);
+            }
+        }
+
+        async function testFetchFile() {
+            const resultDiv = document.getElementById('fileResult');
+            const docId = document.getElementById('docId').value || currentDocId;
+            
+            if (!currentToken) {
+                resultDiv.innerHTML = '<div class="result error">❌ Please login first</div>';
+                return;
+            }
+            
+            if (!docId) {
+                resultDiv.innerHTML = '<div class="result error">❌ Please enter a document ID or load documents first</div>';
+                return;
+            }
+
+            try {
+                resultDiv.innerHTML = '<div class="result">Fetching PDF file...</div>';
+                
+                const fileUrl = `http://localhost:8001/api/documents/${docId}/file`;
+                console.log('Fetching from:', fileUrl);
+                console.log('Using token:', currentToken.substring(0, 30) + '...');
+                
+                const response = await fetch(fileUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`
+                    }
+                });
+                
+                console.log('File response status:', response.status);
+                console.log('File response headers:', [...response.headers.entries()]);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Failed to fetch file: ${response.status} - ${errorText}`);
+                }
+                
+                pdfBlob = await response.blob();
+                console.log('Blob created:', pdfBlob.size, 'bytes, type:', pdfBlob.type);
+                
+                resultDiv.innerHTML = `<div class="result success">✅ PDF file fetched!
+Blob size: ${pdfBlob.size} bytes
+Blob type: ${pdfBlob.type}
+Ready to display!</div>`;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result error">❌ File Fetch Error: ${error.message}
+Stack: ${error.stack}</div>`;
+                console.error('File fetch error:', error);
+            }
+        }
+
+        async function testDisplayPDF() {
+            const resultDiv = document.getElementById('viewerResult');
+            
+            if (!pdfBlob) {
+                resultDiv.innerHTML = '<div class="result error">❌ Please fetch the PDF file first</div>';
+                return;
+            }
+
+            try {
+                resultDiv.innerHTML = '<div class="result">Creating blob URL and displaying PDF...</div>';
+                
+                const blobUrl = URL.createObjectURL(pdfBlob);
+                console.log('Blob URL created:', blobUrl);
+                
+                const iframe = document.getElementById('pdfViewer');
+                iframe.src = blobUrl;
+                iframe.style.display = 'block';
+                
+                resultDiv.innerHTML = `<div class="result success">✅ PDF displayed!
+Blob URL: ${blobUrl}
+Check the viewer below!</div>`;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result error">❌ Display Error: ${error.message}</div>`;
+                console.error('Display error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

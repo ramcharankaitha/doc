@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Button Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #1a1a2e;
+            color: #fff;
+        }
+        .test-card {
+            background: #16213e;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+        button {
+            background: #7B5CFF;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 0 5px;
+            font-size: 12px;
+        }
+        button:hover {
+            background: #9575FF;
+        }
+        .result {
+            background: #000;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            color: #00f5c8;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Simple Button Test</h1>
+    
+    <div class="test-card">
+        <h3>Test Document Card</h3>
+        <p><strong>Document:</strong> test-document.pdf</p>
+        <p><strong>ID:</strong> test-123</p>
+        
+        <div>
+            <button onclick="testView()">View</button>
+            <button onclick="testShare()">Share</button>
+            <button onclick="testDelete()">Delete</button>
+        </div>
+    </div>
+
+    <div class="test-card">
+        <h3>Test with onclick attribute (like dashboard)</h3>
+        <p><strong>Document:</strong> sample-doc.pdf</p>
+        <p><strong>ID:</strong> sample-456</p>
+        
+        <div>
+            <button onclick="viewDocument('sample-456')">View Document</button>
+            <button onclick="shareDocument('sample-456')">Share Document</button>
+            <button onclick="deleteDocument('sample-456')">Delete Document</button>
+        </div>
+    </div>
+
+    <div id="result" class="result">
+        Click buttons above to test functionality...
+    </div>
+
+    <script src="frontend/config.js"></script>
+    <script src="frontend/assets/js/api.js"></script>
+    <script>
+        // CSS Variables
+        document.documentElement.style.setProperty('--navy2', '#16213e');
+        document.documentElement.style.setProperty('--navy3', '#0f1419');
+        document.documentElement.style.setProperty('--navy', '#1a1a2e');
+        document.documentElement.style.setProperty('--cyan', '#00f5c8');
+        document.documentElement.style.setProperty('--text', '#ffffff');
+        document.documentElement.style.setProperty('--muted', '#888888');
+        document.documentElement.style.setProperty('--border', '#333333');
+        document.documentElement.style.setProperty('--purple', '#7B5CFF');
+        document.documentElement.style.setProperty('--red', '#ff4b6e');
+
+        function updateResult(message) {
+            document.getElementById('result').textContent = message;
+            console.log(message);
+        }
+
+        function testView() {
+            updateResult('✅ testView() called successfully!');
+        }
+
+        function testShare() {
+            updateResult('✅ testShare() called successfully!');
+        }
+
+        function testDelete() {
+            updateResult('✅ testDelete() called successfully!');
+        }
+
+        // Dashboard functions (simplified for testing)
+        async function viewDocument(id) {
+            updateResult(`✅ viewDocument('${id}') called successfully!`);
+            
+            // Create a simple modal
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.8);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+            `;
+            
+            modal.innerHTML = `
+                <div style="background: #16213e; padding: 30px; border-radius: 12px; max-width: 500px; width: 90%;">
+                    <h2 style="margin: 0 0 20px 0; color: #00f5c8;">📄 Document Details</h2>
+                    <p style="color: #fff;">Document ID: ${id}</p>
+                    <p style="color: #fff;">This is a test modal for viewing documents.</p>
+                    <button onclick="this.closest('div').parentElement.remove()" style="background: #00f5c8; color: #000; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
+                        Close
+                    </button>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+        }
+
+        async function shareDocument(id) {
+            updateResult(`✅ shareDocument('${id}') called successfully!`);
+            
+            // Create a simple modal
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.8);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+            `;
+            
+            modal.innerHTML = `
+                <div style="background: #16213e; padding: 30px; border-radius: 12px; max-width: 500px; width: 90%;">
+                    <h2 style="margin: 0 0 20px 0; color: #00f5c8;">🔗 Share Document</h2>
+                    <p style="color: #fff;">Document ID: ${id}</p>
+                    <p style="color: #fff;">This is a test modal for sharing documents.</p>
+                    <button onclick="this.closest('div').parentElement.remove()" style="background: #00f5c8; color: #000; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
+                        Close
+                    </button>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+        }
+
+        async function deleteDocument(id) {
+            updateResult(`✅ deleteDocument('${id}') called successfully!`);
+            
+            const confirmed = confirm(`Are you sure you want to delete document ${id}?`);
+            if (confirmed) {
+                updateResult(`✅ Delete confirmed for document ${id}`);
+            } else {
+                updateResult(`❌ Delete cancelled for document ${id}`);
+            }
+        }
+
+        // Test on page load
+        window.addEventListener('load', () => {
+            updateResult('Page loaded. Functions available: ' + 
+                'viewDocument=' + (typeof viewDocument) + ', ' +
+                'shareDocument=' + (typeof shareDocument) + ', ' +
+                'deleteDocument=' + (typeof deleteDocument));
+        });
+    </script>
+</body>
+</html>

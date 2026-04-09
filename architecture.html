@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Architecture</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080c14;
+    --surface: #0d1520;
+    --card: #111b2b;
+    --border: #1e3050;
+    --accent: #00c8ff;
+    --accent2: #7b5ea7;
+    --accent3: #00ff9d;
+    --accent4: #ff6b35;
+    --text: #c8dff5;
+    --muted: #4a6a8a;
+    --glow: rgba(0,200,255,0.15);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,200,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,200,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Ambient glow blobs */
+  .blob {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(100px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .blob-1 { width: 500px; height: 500px; background: rgba(0,200,255,0.06); top: -100px; left: -100px; }
+  .blob-2 { width: 400px; height: 400px; background: rgba(123,94,167,0.07); bottom: 0; right: -100px; }
+  .blob-3 { width: 300px; height: 300px; background: rgba(0,255,157,0.04); top: 50%; left: 50%; }
+
+  .page {
+    position: relative;
+    z-index: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  /* Header */
+  header {
+    text-align: center;
+    margin-bottom: 64px;
+    animation: fadeDown 0.8s ease both;
+  }
+  .label {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+    display: block;
+  }
+  h1 {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 800;
+    line-height: 1.05;
+    background: linear-gradient(135deg, #fff 30%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 16px;
+  }
+  .subtitle {
+    color: var(--muted);
+    font-size: 15px;
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* Stack layout */
+  .stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    position: relative;
+  }
+
+  /* Connector lines between layers */
+  .connector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 56px;
+    position: relative;
+    animation: fadeIn 0.5s ease both;
+  }
+  .connector-line {
+    width: 2px;
+    flex: 1;
+    background: linear-gradient(to bottom, var(--accent), var(--accent2));
+    position: relative;
+  }
+  .connector-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    background: var(--bg);
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .connector-arrow {
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 8px solid var(--accent2);
+  }
+
+  /* Layer cards */
+  .layer {
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--card);
+    padding: 28px 32px;
+    position: relative;
+    overflow: hidden;
+    animation: slideUp 0.7s ease both;
+  }
+  .layer::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .layer-frontend::before { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+  .layer-backend::before  { background: linear-gradient(90deg, var(--accent2), var(--accent3)); }
+  .layer-db::before       { background: linear-gradient(90deg, var(--accent3), var(--accent4)); }
+  .layer-external::before { background: linear-gradient(90deg, var(--accent4), var(--accent)); }
+
+  .layer-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .layer-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .icon-frontend { background: rgba(0,200,255,0.12); }
+  .icon-backend  { background: rgba(123,94,167,0.15); }
+  .icon-db       { background: rgba(0,255,157,0.1); }
+  .icon-external { background: rgba(255,107,53,0.12); }
+
+  .layer-title {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+  .layer-subtitle {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .layer-badge {
+    margin-left: auto;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+  }
+  .badge-frontend { border: 1px solid rgba(0,200,255,0.3); color: var(--accent); }
+  .badge-backend  { border: 1px solid rgba(123,94,167,0.4); color: var(--accent2); }
+  .badge-db       { border: 1px solid rgba(0,255,157,0.3); color: var(--accent3); }
+
+  /* Module grids */
+  .modules {
+    display: grid;
+    gap: 10px;
+  }
+  .modules-3 { grid-template-columns: repeat(3, 1fr); }
+  .modules-2 { grid-template-columns: repeat(2, 1fr); }
+  .modules-6 { grid-template-columns: repeat(6, 1fr); }
+
+  .module {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    transition: border-color 0.2s, transform 0.2s;
+    cursor: default;
+  }
+  .module:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+  .module-name {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: #fff;
+    margin-bottom: 4px;
+  }
+  .module-desc {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+  .module-tag {
+    display: inline-block;
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-top: 6px;
+    letter-spacing: 0.5px;
+  }
+  .tag-route  { background: rgba(0,200,255,0.1);  color: var(--accent); }
+  .tag-engine { background: rgba(123,94,167,0.15); color: var(--accent2); }
+  .tag-table  { background: rgba(0,255,157,0.1);  color: var(--accent3); }
+
+  /* Watermark engine — special nested card */
+  .watermark-box {
+    grid-column: 1 / -1;
+    background: linear-gradient(135deg, rgba(123,94,167,0.1), rgba(0,200,255,0.06));
+    border: 1px dashed rgba(123,94,167,0.4);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-top: 4px;
+  }
+  .watermark-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--accent2);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .watermark-title::before {
+    content: '';
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent2);
+  }
+  .wm-features {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .wm-feature {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(123,94,167,0.3);
+    color: var(--text);
+    background: rgba(123,94,167,0.08);
+  }
+
+  /* Bottom row — external services */
+  .external-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 0;
+  }
+  .ext-card {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--card);
+    padding: 22px 24px;
+    position: relative;
+    overflow: hidden;
+    animation: slideUp 0.7s ease 0.5s both;
+  }
+  .ext-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 2px;
+  }
+  .ext-bland::before  { background: linear-gradient(90deg, var(--accent4), #ff9f6b); }
+  .ext-files::before  { background: linear-gradient(90deg, var(--accent3), #80ffd0); }
+
+  .ext-icon {
+    font-size: 28px;
+    margin-bottom: 10px;
+  }
+  .ext-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .ext-sub {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .ext-detail {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* DB columns */
+  .db-tables {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .db-table {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    padding: 6px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--accent3);
+    transition: border-color 0.2s;
+  }
+  .db-table:hover { border-color: var(--accent3); }
+  .db-index {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 12px;
+    line-height: 1.8;
+  }
+
+  /* Auth / security split */
+  .auth-split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  /* Role hierarchy section */
+  .roles-section {
+    margin-top: 48px;
+    animation: slideUp 0.7s ease 0.6s both;
+  }
+  .section-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .roles-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .role-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 16px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .role-card:hover { transform: translateY(-3px); }
+  .role-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 2px;
+  }
+  .role-superadmin::before { background: linear-gradient(90deg, #ff6b35, #ffd700); border-color: rgba(255,215,0,0.3); }
+  .role-admin::before      { background: linear-gradient(90deg, var(--accent2), var(--accent)); }
+  .role-user::before       { background: linear-gradient(90deg, var(--accent), var(--accent3)); }
+  .role-public::before     { background: linear-gradient(90deg, var(--muted), #2a4060); }
+  .role-superadmin { border-color: rgba(255,215,0,0.2); }
+  .role-admin      { border-color: rgba(123,94,167,0.3); }
+  .role-user       { border-color: rgba(0,200,255,0.2); }
+  .role-public     { border-color: rgba(74,106,138,0.3); }
+
+  .role-icon { font-size: 22px; margin-bottom: 8px; }
+  .role-name {
+    font-weight: 700;
+    font-size: 13px;
+    margin-bottom: 6px;
+  }
+  .role-perms {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.6;
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* Data flow section */
+  .flows-section {
+    margin-top: 40px;
+    animation: slideUp 0.7s ease 0.65s both;
+  }
+  .flows-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .flow-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    transition: border-color 0.2s;
+  }
+  .flow-row:hover { border-color: var(--accent); }
+  .flow-step {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    padding: 3px 7px;
+    border-radius: 4px;
+    background: rgba(0,200,255,0.08);
+    color: var(--accent);
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .flow-text {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .flow-text strong { color: var(--text); font-weight: 600; }
+
+  /* Tech stack pills */
+  .tech-section {
+    margin-top: 40px;
+    animation: slideUp 0.7s ease 0.7s both;
+  }
+  .tech-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  .tech-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    text-align: center;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .tech-card:hover { border-color: var(--accent2); transform: translateY(-2px); }
+  .tech-layer {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .tech-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 3px;
+  }
+  .tech-detail {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* Animations */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* Stagger animations */
+  .layer:nth-child(1) { animation-delay: 0.1s; }
+  .layer:nth-child(3) { animation-delay: 0.25s; }
+  .layer:nth-child(5) { animation-delay: 0.4s; }
+
+  /* Pulse dot */
+  .pulse-dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent3);
+    box-shadow: 0 0 0 0 rgba(0,255,157,0.4);
+    animation: pulse 2s infinite;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(0,255,157,0.5); }
+    70%  { box-shadow: 0 0 0 8px rgba(0,255,157,0); }
+    100% { box-shadow: 0 0 0 0 rgba(0,255,157,0); }
+  }
+
+  /* Footer legend */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    margin-top: 48px;
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+    animation: fadeIn 1s ease 0.8s both;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .legend-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+
+  @media (max-width: 700px) {
+    .modules-3, .modules-6, .roles-grid, .tech-grid { grid-template-columns: 1fr 1fr; }
+    .auth-split, .external-row, .flows-grid { grid-template-columns: 1fr; }
+    .modules-2 { grid-template-columns: 1fr 1fr; }
+    .layer { padding: 20px 16px; }
+    .page { padding: 32px 14px 60px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+<div class="blob blob-3"></div>
+
+<div class="page">
+
+  <header>
+    <span class="label">System Overview</span>
+    <h1>Application Architecture</h1>
+    <p class="subtitle"><span class="pulse-dot"></span>FastAPI · PostgreSQL · Static HTML/JS · DataVault</p>
+  </header>
+
+  <div class="stack">
+
+    <!-- ── FRONTEND ── -->
+    <div class="layer layer-frontend" style="animation-delay:0.1s">
+      <div class="layer-header">
+        <div class="layer-icon icon-frontend">🖥</div>
+        <div>
+          <div class="layer-title">Frontend</div>
+          <div class="layer-subtitle">Static HTML / JavaScript — no framework</div>
+        </div>
+        <span class="layer-badge badge-frontend">CLIENT</span>
+      </div>
+
+      <div class="modules modules-3" style="margin-bottom:14px">
+        <div class="module">
+          <div class="module-name">Public</div>
+          <div class="module-desc">index.html · login.html · shared-view.html</div>
+          <span class="module-tag tag-route">public</span>
+        </div>
+        <div class="module">
+          <div class="module-name">User Portal</div>
+          <div class="module-desc">dashboard.html · my-documents.html · upload-request.html</div>
+          <span class="module-tag tag-route">protected</span>
+        </div>
+        <div class="module">
+          <div class="module-name">Admin Portal</div>
+          <div class="module-desc">admin.html · superadmin.html · admin-mgmt.html</div>
+          <span class="module-tag tag-route">admin</span>
+        </div>
+      </div>
+
+      <div class="modules modules-3">
+        <div class="module">
+          <div class="module-name">api.js</div>
+          <div class="module-desc">Centralised API client — all HTTP calls, JWT injection</div>
+          <span class="module-tag tag-engine">core</span>
+        </div>
+        <div class="module">
+          <div class="module-name">dashboard.js</div>
+          <div class="module-desc">User dashboard logic, folders, documents & requests</div>
+        </div>
+        <div class="module">
+          <div class="module-name">admin.js</div>
+          <div class="module-desc">Admin portal: alerts, users, voice calls, risk scores</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- connector 1 -->
+    <div class="connector">
+      <div class="connector-line"></div>
+      <div class="connector-label">HTTP / REST — Bearer JWT</div>
+      <div class="connector-arrow"></div>
+    </div>
+
+    <!-- ── BACKEND ── -->
+    <div class="layer layer-backend" style="animation-delay:0.25s">
+      <div class="layer-header">
+        <div class="layer-icon icon-backend">⚙️</div>
+        <div>
+          <div class="layer-title">Backend</div>
+          <div class="layer-subtitle">FastAPI · Python · app_postgres.py · port 8001</div>
+        </div>
+        <span class="layer-badge badge-backend">API SERVER</span>
+      </div>
+
+      <div class="auth-split" style="margin-bottom:10px">
+        <div class="module">
+          <div class="module-name">/api/auth/*</div>
+          <div class="module-desc">Login, register, JWT token management, session logging</div>
+          <span class="module-tag tag-route">AUTH</span>
+        </div>
+        <div class="module">
+          <div class="module-name">/api/security · /alerts</div>
+          <div class="module-desc">Security events, alert dispatch, access log ingestion</div>
+          <span class="module-tag tag-route">SECURITY</span>
+        </div>
+      </div>
+
+      <div class="modules modules-3" style="margin-bottom:10px">
+        <div class="module">
+          <div class="module-name">/api/documents/*</div>
+          <div class="module-desc">Upload, retrieve, manage documents & folders</div>
+          <span class="module-tag tag-route">DOCS</span>
+        </div>
+        <div class="module">
+          <div class="module-name">/api/shares/*</div>
+          <div class="module-desc">Tokenised sharing, expiry, custom masks, watermarked endpoint</div>
+          <span class="module-tag tag-route">SHARES</span>
+        </div>
+        <div class="module">
+          <div class="module-name">/api/voice/*</div>
+          <div class="module-desc">Bland.ai call trigger, poll status, auto-lock on user NO</div>
+          <span class="module-tag tag-route">VOICE</span>
+        </div>
+      </div>
+
+      <div class="modules modules-2" style="margin-bottom:12px">
+        <div class="module">
+          <div class="module-name">/api/admin/*</div>
+          <div class="module-desc">Admin CRUD: users, documents, analytics, risk scoring</div>
+          <span class="module-tag tag-route">ADMIN</span>
+        </div>
+        <div class="module">
+          <div class="module-name">/api/superadmin</div>
+          <div class="module-desc">Super-admin controls, admin creation, platform config</div>
+          <span class="module-tag tag-route">SUPER</span>
+        </div>
+      </div>
+
+      <!-- Watermark Engine -->
+      <div class="watermark-box">
+        <div class="watermark-title">Watermark Engine</div>
+        <div class="wm-features">
+          <span class="wm-feature">_apply_watermark_pdf()  ·  reportlab + pypdf</span>
+          <span class="wm-feature">_apply_watermark_image()  ·  Pillow</span>
+          <span class="wm-feature">✦ Visible diagonal overlay</span>
+          <span class="wm-feature">🔬 LSB steganography (forensic)</span>
+          <span class="wm-feature">■ Server-side black rect masking</span>
+          <span class="wm-feature">🆔 Identity: IP · timestamp · session ID</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- connector 2 -->
+    <div class="connector">
+      <div class="connector-line"></div>
+      <div class="connector-label">SQLAlchemy ORM</div>
+      <div class="connector-arrow"></div>
+    </div>
+
+    <!-- ── DATABASE ── -->
+    <div class="layer layer-db" style="animation-delay:0.4s">
+      <div class="layer-header">
+        <div class="layer-icon icon-db">🗄</div>
+        <div>
+          <div class="layer-title">PostgreSQL Database</div>
+          <div class="layer-subtitle">Relational persistence layer · auto-migrated on startup</div>
+        </div>
+        <span class="layer-badge badge-db">DATABASE</span>
+      </div>
+
+      <div class="db-tables">
+        <span class="db-table">users</span>
+        <span class="db-table">documents</span>
+        <span class="db-table">shares</span>
+        <span class="db-table">access_logs</span>
+        <span class="db-table">alerts</span>
+        <span class="db-table">folders</span>
+        <span class="db-table">document_requests</span>
+      </div>
+      <div class="db-index">
+        <span style="color:var(--accent3)">INDEXES →</span>
+        shares(share_token) · documents(id) · shares(status) · access_logs(timestamp DESC)
+      </div>
+    </div>
+
+    <!-- connector 3 -->
+    <div class="connector" style="animation-delay:0.5s">
+      <div class="connector-line" style="background:linear-gradient(to bottom, var(--accent3), var(--accent4))"></div>
+      <div class="connector-label" style="color:var(--accent3); border-color: rgba(0,255,157,0.3)">External Services</div>
+      <div class="connector-arrow" style="border-top-color:var(--accent4)"></div>
+    </div>
+
+    <!-- ── EXTERNAL ── -->
+    <div class="external-row">
+      <div class="ext-card ext-bland">
+        <div class="ext-icon">📞</div>
+        <div class="ext-title">Bland.ai</div>
+        <div class="ext-sub">Voice Call Integration</div>
+        <div class="ext-detail">Outbound security alert voice calls triggered by backend events via <span style="color:var(--accent4); font-family:'Space Mono',monospace; font-size:11px">/trigger-voice-call</span>. User says YES to confirm or NO to auto-lock account.</div>
+      </div>
+      <div class="ext-card ext-files">
+        <div class="ext-icon">📁</div>
+        <div class="ext-title">File Storage</div>
+        <div class="ext-sub">backend/uploads/</div>
+        <div class="ext-detail">Local filesystem storage for uploaded documents — PDFs, images, and other file types. Originals untouched; watermarked bytes generated on-the-fly per request.</div>
+      </div>
+    </div>
+
+  </div><!-- /stack -->
+
+  <!-- ── ROLE HIERARCHY ── -->
+  <div class="roles-section">
+    <div class="section-label">Role Hierarchy</div>
+    <div class="roles-grid">
+      <div class="role-card role-superadmin">
+        <div class="role-icon">👑</div>
+        <div class="role-name" style="color:#ffd700">Super Admin</div>
+        <div class="role-perms">Manage admins · platform config · all data access · full control</div>
+      </div>
+      <div class="role-card role-admin">
+        <div class="role-icon">🛡</div>
+        <div class="role-name" style="color:var(--accent2)">Admin</div>
+        <div class="role-perms">Security monitoring · alerts · voice calls · lock/unlock users · access logs</div>
+      </div>
+      <div class="role-card role-user">
+        <div class="role-icon">👤</div>
+        <div class="role-name" style="color:var(--accent)">User</div>
+        <div class="role-perms">Upload & manage own docs · create shares · view own access history</div>
+      </div>
+      <div class="role-card role-public">
+        <div class="role-icon">🌐</div>
+        <div class="role-name" style="color:var(--muted)">Public</div>
+        <div class="role-perms">View shared docs via token · upload via request link (no auth)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── KEY DATA FLOWS ── -->
+  <div class="flows-section">
+    <div class="section-label">Key Data Flows</div>
+    <div class="flows-grid">
+      <div class="flow-row">
+        <span class="flow-step">LOGIN</span>
+        <div class="flow-text"><strong>login.html</strong> → POST /api/auth/login → JWT → localStorage → all protected routes</div>
+      </div>
+      <div class="flow-row">
+        <span class="flow-step">UPLOAD</span>
+        <div class="flow-text"><strong>dashboard.html</strong> → POST /api/documents/upload → disk + DB row + risk scoring</div>
+      </div>
+      <div class="flow-row">
+        <span class="flow-step">SHARE</span>
+        <div class="flow-text">Creates <strong>Share</strong> record with share_token · expiry · custom_masks JSON</div>
+      </div>
+      <div class="flow-row">
+        <span class="flow-step">VIEW</span>
+        <div class="flow-text"><strong>shared-view.html</strong> → GET /api/shares/access/{token}/watermarked → watermarked bytes served</div>
+      </div>
+      <div class="flow-row">
+        <span class="flow-step">ALERT</span>
+        <div class="flow-text">Access anomaly → <strong>Alert</strong> row → Admin panel notified → Bland.ai voice call auto-triggered</div>
+      </div>
+      <div class="flow-row">
+        <span class="flow-step">LOCK</span>
+        <div class="flow-text">User says NO on voice call → backend detects transcript → account locked automatically</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TECH STACK ── -->
+  <div class="tech-section">
+    <div class="section-label">Tech Stack</div>
+    <div class="tech-grid">
+      <div class="tech-card">
+        <div class="tech-layer">Frontend</div>
+        <div class="tech-name">Vanilla HTML/JS</div>
+        <div class="tech-detail">No framework · Space Mono · Syne</div>
+      </div>
+      <div class="tech-card">
+        <div class="tech-layer">Backend</div>
+        <div class="tech-name">FastAPI</div>
+        <div class="tech-detail">Python 3.x · Uvicorn · PyJWT</div>
+      </div>
+      <div class="tech-card">
+        <div class="tech-layer">Database</div>
+        <div class="tech-name">PostgreSQL</div>
+        <div class="tech-detail">SQLAlchemy ORM · auto-migrate</div>
+      </div>
+      <div class="tech-card">
+        <div class="tech-layer">PDF / Image</div>
+        <div class="tech-name">pypdf + Pillow</div>
+        <div class="tech-detail">reportlab watermarking · LSB steg</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>Frontend Layer</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--accent2)"></div>Backend / API</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--accent3)"></div>Database</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--accent4)"></div>External Services</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--muted)"></div>JWT Auth on all protected routes</div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+            background: #0A0E1A;
+            color: white;
+            text-align: center;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #111828;
+            padding: 40px;
+            border-radius: 16px;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            background: linear-gradient(135deg, #7B5CFF, #0AAFFF);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        #qrcode {
+            margin: 20px auto;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            display: inline-block;
+        }
+        .success {
+            color: #00F5C8;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔗 QR Code Test</h1>
+        <p>Click the button to generate a QR code</p>
+        
+        <button onclick="generateQR()">📱 Generate QR Code</button>
+        <button onclick="clearQR()">🗑️ Clear</button>
+        
+        <div id="qrcode"></div>
+        <div id="status"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script>
+        let qrcode = null;
+        
+        function generateQR() {
+            // Clear previous QR code
+            clearQR();
+            
+            const container = document.getElementById('qrcode');
+            const status = document.getElementById('status');
+            
+            try {
+                // Generate QR code
+                qrcode = new QRCode(container, {
+                    text: "https://vault.datavaultsecure.in/s/test123",
+                    width: 256,
+                    height: 256,
+                    colorDark: "#0A0E1A",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+                
+                status.innerHTML = '<p class="success">✅ QR Code generated successfully!</p>';
+                
+                // Add download button after QR is generated
+                setTimeout(() => {
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.textContent = '💾 Download QR Code';
+                    downloadBtn.onclick = downloadQR;
+                    status.appendChild(downloadBtn);
+                }, 500);
+                
+            } catch (error) {
+                status.innerHTML = '<p style="color: #FF4B6E;">❌ Error: ' + error.message + '</p>';
+                console.error('QR Code Error:', error);
+            }
+        }
+        
+        function clearQR() {
+            document.getElementById('qrcode').innerHTML = '';
+            document.getElementById('status').innerHTML = '';
+            qrcode = null;
+        }
+        
+        function downloadQR() {
+            const canvas = document.querySelector('#qrcode canvas');
+            if (canvas) {
+                const link = document.createElement('a');
+                link.download = 'test_qr_code.png';
+                link.href = canvas.toDataURL();
+                link.click();
+                alert('QR code downloaded!');
+            } else {
+                alert('No QR code to download');
+            }
+        }
+        
+        // Check if QRCode library is loaded
+        window.onload = function() {
+            if (typeof QRCode !== 'undefined') {
+                console.log('✅ QRCode library loaded successfully');
+            } else {
+                console.error('❌ QRCode library failed to load');
+                document.getElementById('status').innerHTML = '<p style="color: #FF4B6E;">❌ QRCode library failed to load. Check your internet connection.</p>';
+            }
+        };
+    </script>
+</body>
+</html>
